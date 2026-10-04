@@ -1,0 +1,16 @@
+---
+title: "Homework 2"
+author: "Zhiquan Chen"
+output: github_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+
+library(tidyverse)
+```
+
+# Problem 1
