@@ -52,6 +52,7 @@ n_stations =
   subway_df |>
   distinct(line, station_name) |>
   nrow()
+n_stations
 ```
 There are `r n_stations` distinct stations.
 
@@ -61,6 +62,7 @@ n_ada_stations =
   filter(ada == TRUE) |>
   distinct(line, station_name) |>
   nrow()
+n_ada_stations
 ```
 `r n_ada_stations` stations are ADA compliant.
 
@@ -77,4 +79,43 @@ no_vending_summary =
 no_vending_summary
 ```
 
-`r no_vending_summary[3]` of station entrances / exits without vending allow entrance.
+`r sprintf("%.2f%%", no_vending_summary[3] * 100)` of station entrances / exits without vending allow entrance.
+
+```{r}
+subway_long =
+  subway_df |>
+  pivot_longer(
+    cols = starts_with("route"),
+    names_to = "route_number",
+    names_prefix = "route",
+    names_transform = list(route_number = as.integer),
+    values_to = "route_name",
+    values_drop_na = TRUE
+  )
+```
+
+```{r}
+n_a_stations =
+  subway_long |>
+  filter(route_name == "A") |>
+  distinct(line, station_name) |>
+  nrow()
+
+n_a_stations
+```
+
+`r n_a_stations` distinct stations serve the A train.
+
+```{r}
+n_a_ada_stations =
+  subway_long |>
+  filter(
+    route_name == "A",
+    ada == TRUE
+  ) |>
+  distinct(line, station_name) |>
+  nrow()
+
+n_a_ada_stations
+```
+`r n_a_ada_stations ` of the stations that serve the A train are ADA compliant.
