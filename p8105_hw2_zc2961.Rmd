@@ -11,6 +11,70 @@ knitr::opts_chunk$set(
 )
 
 library(tidyverse)
+library(janitor)
 ```
 
 # Problem 1
+```{r}
+subway_raw =
+  read_csv(
+    "data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv",
+    col_types = cols(
+      .default = col_character(),
+      `Station Latitude` = col_double(),
+      `Station Longitude` = col_double(),
+      ADA = col_logical()
+    )
+  ) |>
+clean_names()
+subway_df =
+  subway_raw |>
+  select(
+    line,
+    station_name,
+    station_latitude,
+    station_longitude,
+    starts_with("route"),
+    entry,
+    vending,
+    entrance_type,
+    ada
+  ) |>
+  mutate(
+    entry = entry == "YES"
+  )
+
+```
+This dataset records subway entrances and exits in NYC. After cleaning, it contains `r dim(subway_df)[1]` rows and `r dim(subway_df)[2]` columns, including line, station name, station coordinates, routes served, entry permission, vending availability, entrance type, and ADA compliance. I standardized the column names, retained the requested variables, explicitly specified data types, and converted entry from “YES”/“NO” to TRUE/FALSE. No entrance/exit records were removed. The data are not yet tidy for route-level analysis because route names are stored in eleven separate columns, route1 through route11, instead of a single route-name column.
+
+```{r}
+n_stations =
+  subway_df |>
+  distinct(line, station_name) |>
+  nrow()
+```
+There are `r n_stations` distinct stations.
+
+```{r}
+n_ada_stations =
+  subway_df |>
+  filter(ada == TRUE) |>
+  distinct(line, station_name) |>
+  nrow()
+```
+`r n_ada_stations` stations are ADA compliant.
+
+```{r}
+no_vending_summary =
+  subway_df |>
+  filter(vending == "NO") |>
+  summarise(
+    n_no_vending = n(),
+    n_allow_entry = sum(entry),
+    prop_allow_entry = mean(entry)
+  )
+
+no_vending_summary
+```
+
+`r no_vending_summary[3]` of station entrances / exits without vending allow entrance.
