@@ -183,3 +183,48 @@ trash_df =
   )
 ```
 
+```{r}
+professor_summary =
+  trash_df |>
+  filter(trash_wheel == "Professor Trash Wheel") |>
+  summarise(
+    total_weight_tons = sum(weight_tons, na.rm = TRUE)
+  )
+
+professor_summary$total_weight_tons
+```
+```{r}
+gwynnda_june_2022_summary =
+  trash_df |>
+  filter(
+    trash_wheel == "Gwynnda",
+    year == 2022,
+    month == "June"
+  ) |>
+  summarise(
+    n_records = n(),
+    total_cigarette_butts = sum(cigarette_butts, na.rm = TRUE)
+  )
+
+gwynnda_june_2022_summary
+```
+
+The combined dataset contains `r nrow(trash_df)` dumpster-level observations
+and `r ncol(trash_df)` variables: `r nrow(mr_trash_df)` observations from
+Mr. Trash Wheel, `r nrow(professor_trash_df)` from Professor Trash Wheel,
+and `r nrow(gwynnda_trash_df)` from Gwynnda. Key variables include the
+source trash wheel, dumpster identifier, month, year, collection date,
+weight in tons, volume in cubic yards, and recorded counts of items
+such as plastic bottles, cigarette butts, and sports balls. I restricted
+each import to the relevant table range, standardized variable names
+and month labels, removed rows without dumpster identifiers, made
+year and date types consistent, and rounded Mr. Trash Wheel's sports-ball
+counts to the nearest integer before converting them to integer type.
+A source variable identifies the trash wheel for each observation.
+Missing measurements and variables absent from individual sheets are
+retained as NA, not zero. For the available data, Professor Trash Wheel
+collected `r sprintf("%.2f", professor_summary$total_weight_tons)` tons of
+trash, and Gwynnda collected
+`r format(gwynnda_june_2022_summary$total_cigarette_butts, big.mark = ",", scientific = FALSE, trim = TRUE)`
+cigarette butts in June 2022.
+
