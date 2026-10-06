@@ -63,7 +63,6 @@ n_ada_stations =
   filter(ada == TRUE) |>
   distinct(line, station_name) |>
   nrow()
-n_ada_stations
 ```
 `r n_ada_stations` stations are ADA compliant.
 
@@ -77,7 +76,6 @@ no_vending_summary =
     prop_allow_entry = mean(entry)
   )
 
-no_vending_summary
 ```
 
 `r sprintf("%.2f%%", no_vending_summary$prop_allow_entry * 100)` of station entrances / exits without vending allow entrance.
@@ -102,7 +100,6 @@ n_a_stations =
   distinct(line, station_name) |>
   nrow()
 
-n_a_stations
 ```
 
 `r n_a_stations` distinct stations serve the A train.
@@ -117,7 +114,6 @@ n_a_ada_stations =
   distinct(line, station_name) |>
   nrow()
 
-n_a_ada_stations
 ```
 `r n_a_ada_stations` of the stations that serve the A train are ADA compliant.
 
@@ -191,7 +187,6 @@ professor_summary =
     total_weight_tons = sum(weight_tons, na.rm = TRUE)
   )
 
-professor_summary$total_weight_tons
 ```
 ```{r}
 gwynnda_june_2022_summary =
@@ -205,28 +200,9 @@ gwynnda_june_2022_summary =
     n_records = n(),
     total_cigarette_butts = sum(cigarette_butts, na.rm = TRUE)
   )
-
-gwynnda_june_2022_summary
 ```
 
-The combined dataset contains `r nrow(trash_df)` dumpster-level observations
-and `r ncol(trash_df)` variables: `r nrow(mr_trash_df)` observations from
-Mr. Trash Wheel, `r nrow(professor_trash_df)` from Professor Trash Wheel,
-and `r nrow(gwynnda_trash_df)` from Gwynnda. Key variables include the
-source trash wheel, dumpster identifier, month, year, collection date,
-weight in tons, volume in cubic yards, and recorded counts of items
-such as plastic bottles, cigarette butts, and sports balls. I restricted
-each import to the relevant table range, standardized variable names
-and month labels, removed rows without dumpster identifiers, made
-year and date types consistent, and rounded Mr. Trash Wheel's sports-ball
-counts to the nearest integer before converting them to integer type.
-A source variable identifies the trash wheel for each observation.
-Missing measurements and variables absent from individual sheets are
-retained as NA, not zero. For the available data, Professor Trash Wheel
-collected `r sprintf("%.2f", professor_summary$total_weight_tons)` tons of
-trash, and Gwynnda collected
-`r format(gwynnda_june_2022_summary$total_cigarette_butts, big.mark = ",", scientific = FALSE, trim = TRUE)`
-cigarette butts in June 2022.
+The combined dataset contains `r nrow(trash_df)` dumpster-level observations and `r ncol(trash_df)` variables: `r nrow(mr_trash_df)` observations from Mr. Trash Wheel, `r nrow(professor_trash_df)` from Professor Trash Wheel, and `r nrow(gwynnda_trash_df)` from Gwynnda. Key variables include the source trash wheel, dumpster identifier, month, year, collection date, weight in tons, volume in cubic yards, and recorded counts of items such as plastic bottles, cigarette butts, and sports balls. I restricted each import to the relevant table range, standardized variable names and month labels, removed rows without dumpster identifiers, made year and date types consistent, and rounded Mr. Trash Wheel's sports-ball counts to the nearest integer before converting them to integer type. A source variable identifies the trash wheel for each observation. Missing measurements and variables absent from individual sheets are retained as NA, not zero. For the available data, Professor Trash Wheel collected `r sprintf("%.2f", professor_summary$total_weight_tons)` tons of trash, and Gwynnda collected `r format(gwynnda_june_2022_summary$total_cigarette_butts, big.mark = ",", scientific = FALSE, trim = TRUE)` cigarette butts in June 2022.
 
 # Problem 3
 ```{r}
@@ -254,9 +230,7 @@ baseline_raw =
       labels = c("Non-carrier", "Carrier")
     )
   )
-```
 
-```{r}
 baseline_excluded =
   baseline_raw |>
   filter(
@@ -264,15 +238,95 @@ baseline_excluded =
     age_at_onset <= baseline_age
   )
 
-baseline_excluded |>
-  select(id, baseline_age, age_at_onset)
 baseline_df =
   baseline_raw |>
   filter(
     is.na(age_at_onset) | age_at_onset > baseline_age
   )
-
 ```
 
+I skipped the first descriptive row, standardized the column names, and renamed `current_age` to `baseline_age`. Sex and APOE4 carrier status were encoded as factors. I treated "." as a missing onset age, indicating no MCI during the recorded follow-up, and excluded participants whose onset age was at or before baseline.
+
+```{r}
+baseline_summary =
+  baseline_df |>
+  summarise(
+    n_participants = n(),
+    n_develop_mci = sum(!is.na(age_at_onset)),
+    mean_baseline_age = mean(baseline_age)
+  )
+
+women_summary =
+  baseline_df |>
+  filter(sex == "Female") |>
+  summarise(
+    prop_carriers = mean(apoe4 == "Carrier")
+  )
+```
+The baseline file contains `r nrow(baseline_raw)` recruited participants. After excluding `r nrow(baseline_excluded)` participants with MCI onset at or before baseline, `r baseline_summary$n_participants` participants were eligible, of whom `r baseline_summary$n_develop_mci` developed MCI during follow-up. Their mean baseline age was `r sprintf("%.2f", baseline_summary$mean_baseline_age)` years, and `r sprintf("%.2f%%", 100 * women_summary$prop_carriers)` of eligible women were APOE4 carriers. The cleaned baseline dataset has one row per participant and `r ncol(baseline_df)` variables: participant ID, baseline age, sex, years of education, APOE4 carrier status, and age at MCI onset.
+
+
+```{r}
+amyloid_wide =
+  read_csv(
+    "data/data_mci/mci_amyloid.csv",
+    skip = 1,
+    na = c("", "NA", "Na"),
+    col_types = cols(
+      .default = col_double(),
+      `Study ID` = col_integer()
+    )
+  ) |>
+  clean_names() |>
+  rename(
+    id = study_id,
+    time_0 = baseline
+  )
+
+amyloid_long =
+  amyloid_wide |>
+  pivot_longer(
+    cols = starts_with("time_"),
+    names_to = "time",
+    names_prefix = "time_",
+    names_transform = list(time = as.integer),
+    values_to = "amyloid_ratio",
+  ) |>
+  arrange(id, time)
+```
+
+For the amyloid file, I skipped the first descriptive row, cleaned the column names, treated "NA" and "Na" as missing-value markers, and imported the biomarker values as numeric. I renamed `study_id` to `id` for matching and reshaped the measurements into the variables `id`, `time`, and `amyloid_ratio`. The time variable denotes years since baseline: 0, 2, 4, 6, and 8. Missing biomarker values were retained. The tidy dataset contains `r n_distinct(amyloid_long$id)` participants and `r nrow(amyloid_long)` participant-time rows.
+
+
+```{r}
+baseline_ids =
+  baseline_df |>
+  distinct(id)
+
+amyloid_ids =
+  amyloid_long |>
+  distinct(id)
+
+baseline_only =
+  anti_join(baseline_ids, amyloid_ids, by = "id")
+
+amyloid_only =
+  anti_join(amyloid_ids, baseline_ids, by = "id")
+```
+After baseline exclusions, `r nrow(baseline_only)` eligible participants have no matching amyloid record, while `r nrow(amyloid_only)` participants in the amyloid dataset have no matching eligible baseline record.
+
+```{r}
+mci_combined =
+  baseline_df |>
+  inner_join(amyloid_long, by = "id") |>
+  arrange(id, time)
+
+write_csv(
+  mci_combined,
+  "data/data_mci/mci_combined.csv",
+  na = "NA"
+)
+```
+I used an inner join on participant ID to retain only participants present in both cleaned datasets. The combined dataset contains `r n_distinct(mci_combined$id)` participants, `r nrow(mci_combined)` participant-time rows, and `r ncol(mci_combined)` variables. Each participant has a row at each of the five time points, with baseline characteristics repeated across time. The dataset was exported to `data/data_mci/mci_combined.csv`.
 
 
